@@ -1,19 +1,111 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
-- main
+  branches:
+    include:
+      - lobby
+      - game
+      - login
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: 'ubuntu-latest'
 
+variables:
+  azureSubscription: 'Azure para estudiantes: Starter(03febc1d-c36e-462f-8932-ee4f8678b643)'
+  containerRegistry: 'nombre-registro.azurecr.io'  # Reemplaza con tu ACR o Docker Hub
+  containerRegistryUsername: 'usuario'  # Tu nombre de usuario de ACR o Docker Hub
+  containerRegistryPassword: '$(containerRegistryPassword)'  # Se almacenará como secret variable
+
+# Autenticarse en el Registro de Contenedores
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+- task: Docker@2
+  inputs:
+    command: 'login'
+    containerRegistry: '$(containerRegistry)'
+    username: '$(containerRegistryUsername)'
+    password: '$(containerRegistryPassword)'
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+# Construir y desplegar para la rama 'lobby'
+- job: BuildAndDeployLobby
+  condition: eq(variables['Build.SourceBranchName'], 'lobby')
+  steps:
+    # Compilar el microservicio lobby con Maven
+    - task: Maven@4
+      inputs:
+        mavenPomFile: 'lobby/pom.xml'
+        goals: 'clean package'
+
+    # Construir y empujar la imagen de Docker para lobby
+    - task: Docker@2
+      inputs:
+        command: 'buildAndPush'
+        repository: '$(containerRegistry)/lobby'
+        dockerfile: 'lobby/Dockerfile'
+        tags: |
+          $(Build.BuildId)
+
+    # Desplegar en Azure Container Apps
+    - task: AzureContainerApps@1
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        containerAppName: 'app-lobby'
+        imageToDeploy: '$(containerRegistry)/lobby:$(Build.BuildId)'
+        containerRegistryServer: '$(containerRegistry)'
+        containerRegistryUsername: '$(containerRegistryUsername)'
+        containerRegistryPassword: '$(containerRegistryPassword)'
+
+# Construir y desplegar para la rama 'game'
+- job: BuildAndDeployGame
+  condition: eq(variables['Build.SourceBranchName'], 'game')
+  steps:
+    # Compilar el microservicio game con Maven
+    - task: Maven@4
+      inputs:
+        mavenPomFile: 'game/pom.xml'
+        goals: 'clean package'
+
+    # Construir y empujar la imagen de Docker para game
+    - task: Docker@2
+      inputs:
+        command: 'buildAndPush'
+        repository: '$(containerRegistry)/game'
+        dockerfile: 'game/Dockerfile'
+        tags: |
+          $(Build.BuildId)
+
+    # Desplegar en Azure Container Apps
+    - task: AzureContainerApps@1
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        containerAppName: 'app-game'
+        imageToDeploy: '$(containerRegistry)/game:$(Build.BuildId)'
+        containerRegistryServer: '$(containerRegistry)'
+        containerRegistryUsername: '$(containerRegistryUsername)'
+        containerRegistryPassword: '$(containerRegistryPassword)'
+
+# Construir y desplegar para la rama 'login'
+- job: BuildAndDeployLogin
+  condition: eq(variables['Build.SourceBranchName'], 'login')
+  steps:
+    # Compilar el microservicio login con Maven
+    - task: Maven@4
+      inputs:
+        mavenPomFile: 'login/pom.xml'
+        goals: 'clean package'
+
+    # Construir y empujar la imagen de Docker para login
+    - task: Docker@2
+      inputs:
+        command: 'buildAndPush'
+        repository: '$(containerRegistry)/login'
+        dockerfile: 'login/Dockerfile'
+        tags: |
+          $(Build.BuildId)
+
+    # Desplegar en Azure Container Apps
+    - task: AzureContainerApps@1
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        containerAppName: 'app-login'
+        imageToDeploy: '$(containerRegistry)/login:$(Build.BuildId)'
+        containerRegistryServer: '$(containerRegistry)'
+        containerRegistryUsername: '$(containerRegistryUsername)'
+        containerRegistryPassword: '$(containerRegistryPassword)'
