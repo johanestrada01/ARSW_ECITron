@@ -10,22 +10,26 @@ pool:
 
 variables:
   azureSubscription: 'Azure para estudiantes: Starter(03febc1d-c36e-462f-8932-ee4f8678b643)'
-  containerRegistry: 'nombre-registro.azurecr.io'  # Reemplaza con tu ACR o Docker Hub
-  containerRegistryUsername: 'usuario'  # Tu nombre de usuario de ACR o Docker Hub
-  containerRegistryPassword: '$(containerRegistryPassword)'  # Se almacenará como secret variable
+  containerRegistry: 'ecitroncontainerregistry.azurecr.io'
+  containerRegistryUsername: 'ECITronContainerRegistry'
+  containerRegistryPassword: '$(ContainerRegistryPassword)'  # Asegúrate de que este secreto esté definido
 
+jobs:
 # Autenticarse en el Registro de Contenedores
-steps:
-- task: Docker@2
-  inputs:
-    command: 'login'
-    containerRegistry: '$(containerRegistry)'
-    username: '$(containerRegistryUsername)'
-    password: '$(containerRegistryPassword)'
+- job: Authenticate
+  steps:
+  - task: Docker@2
+    inputs:
+      command: 'login'
+      containerRegistry: '$(containerRegistry)'
+      username: '$(containerRegistryUsername)'
+      password: '$(containerRegistryPassword)'
 
 # Construir y desplegar para la rama 'lobby'
 - job: BuildAndDeployLobby
   condition: eq(variables['Build.SourceBranchName'], 'lobby')
+  pool:
+    vmImage: 'ubuntu-latest'
   steps:
     # Compilar el microservicio lobby con Maven
     - task: Maven@4
@@ -55,6 +59,8 @@ steps:
 # Construir y desplegar para la rama 'game'
 - job: BuildAndDeployGame
   condition: eq(variables['Build.SourceBranchName'], 'game')
+  pool:
+    vmImage: 'ubuntu-latest'
   steps:
     # Compilar el microservicio game con Maven
     - task: Maven@4
@@ -84,6 +90,8 @@ steps:
 # Construir y desplegar para la rama 'login'
 - job: BuildAndDeployLogin
   condition: eq(variables['Build.SourceBranchName'], 'login')
+  pool:
+    vmImage: 'ubuntu-latest'
   steps:
     # Compilar el microservicio login con Maven
     - task: Maven@4
